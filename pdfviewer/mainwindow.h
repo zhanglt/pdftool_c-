@@ -47,6 +47,7 @@ class MainWindow : public QMainWindow {
 
  private slots:
   void bookmarkSelected(const QModelIndex &index);
+  void qprogresssindicat();
 
   // action handlers
   void on_actionOpen_triggered();
@@ -74,6 +75,20 @@ class MainWindow : public QMainWindow {
   void on_btnSelectImageDir_clicked();
 
   void on_btnTransformBat_clicked();
+
+  void on_btnSelectPDFFile_clicked();
+
+  void on_btnPdfToImage_clicked();
+
+  void on_btnSelectFilesplit_clicked();
+
+  void on_lineEditInputFilesplit_textChanged(const QString &filename);
+
+  void on_btnSelectSplitDir_clicked();
+
+  void on_btnSplitPdf_clicked();
+
+  void on_lineEditSplitOutput_textChanged(const QString &filepath);
 
  signals:
   void Finished();
