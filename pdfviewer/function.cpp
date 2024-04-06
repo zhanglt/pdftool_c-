@@ -306,41 +306,158 @@ std::string extractDirectory(const std::string& fullPath) {
   }
 }
 
-/*
-
-int pdf2image(string pdfFile,string imagePath){
-
-   // qDebug()<<"imagePath"<<QString::fromStdString(imagePath);
-   // qDebug()<<"pdfFile"<<QString::fromStdString(pdfFile);
-    std::string sfile(pdfFile);
-    fz_context* ctx =  fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
-    fz_register_document_handlers(ctx);
-    fz_document* doc =  fz_open_document(ctx, pdfFile.c_str());
-    if (!doc) {
-        qDebug()<<"文件处理错误："<<QString::fromStdString(pdfFile);
-        return 1;
-    }
-    int num = fz_count_pages(ctx, doc);
-   // qDebug()<< "page:" << num << endl;
-    float zoom = (float)150 / (float)72;
-    fz_matrix ctm = fz_scale(zoom, zoom);
-
-    for(int i=0; i<num; i++)
-    {
-        //string fileName = imagePath + extractFileName(sfile)+to_string(i) +
-".png";
-        //string fileName = imagePath+"/"+extractFileName(sfile)+to_string(i) +
-".png"; string fileName = imagePath+"/"+to_string(i)+ ".png";
-        //qDebug()<< "fileName:" <<QString::fromStdString(fileName);
-        fz_pixmap* pix = fz_new_pixmap_from_page_number(ctx, doc, i, ctm,
-fz_device_rgb(ctx), 0); fz_save_pixmap_as_png(ctx, pix, fileName.c_str());
-        fz_drop_pixmap(ctx, pix);
-    }
-
-    fz_drop_document(ctx, doc);
-    fz_drop_context(ctx);
-    return num;
-
+// 获取pdf文件的页数
+int getPages(string pdfFile) {
+  std::string sfile(pdfFile);
+  fz_context* ctx = fz_new_context(NULL, NULL, FZ_STORE_DEFAULT);
+  fz_register_document_handlers(ctx);
+  fz_document* doc = fz_open_document(ctx, pdfFile.c_str());
+  if (!doc) {
+    qDebug() << "文件处理错误：" << QString::fromStdString(pdfFile);
+    return 1;
+  }
+  int num = fz_count_pages(ctx, doc);
+  fz_drop_document(ctx, doc);
+  fz_drop_context(ctx);
+  return num;
 }
 
-*/
+//将pdf拆分多个文件，subpages是拆分收每一个文件的页数
+// in:输入文件
+// out:输出文件
+// subpages 每个拆分文件的个数
+int splitPdf(string in, string out, int subpages) {
+  int indoc, page_count;
+  wstring infile = String2WString(in);
+  wstring outfile_basename = String2WString(out);
+  qDebug() << "filename:" << QString::fromStdWString(outfile_basename);
+  // int SUBDOC_PAGES = subpages;
+  try {
+    PDFlib p;
+    const wstring searchpath = L"./PDFlib-CMap-5.0/resource/cmap";
+    wostringstream optlist;
+    optlist << L"searchpath={{" << searchpath << L"}";
+    optlist << L" {" << GetFontsFolder() << L"}}";
+    p.set_option(optlist.str());
+    p.set_info(L"Creator", L"泛生态业务工具集");
+    p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
+    indoc = p.open_pdi_document(infile, L"");
+    if (indoc == -1) {
+      wcerr << L"打开文档错误: " << p.get_errmsg() << endl;
+    }
+    page_count = (int)p.pcos_get_number(indoc, L"length:pages");
+    //计算需要拆分成的文件数
+    int outdoc_count =
+        page_count / subpages + (page_count % subpages > 0 ? 1 : 0);
+    for (int outdoc_counter = 0, page = 0; outdoc_counter < outdoc_count;
+         outdoc_counter++) {
+      std::wstringstream s1, s0;
+      s0 << outdoc_counter;
+      s1 << outdoc_counter + 1;
+
+      wstring outfile = outfile_basename + L"_" + s1.str() + L".pdf";
+
+      /*
+       * Open new sub-document.
+       */
+      if (p.begin_document(outfile, L"") == -1) {
+      }
+      p.set_info(L"Creator", L"泛生态业务工具集");
+      p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
+      p.set_info(L"Subject", L"Sub-document " + s1.str() + L" of " + s0.str() +
+                                 L" of input document '" + infile + L"'");
+      for (int i = 0; page < page_count && i < subpages; page++, i++) {
+        /* Page size may be adjusted by fit_pdi_page() */
+        p.begin_page_ext(0, 0, L"width=a4.width height=a4.height");
+        int pagehdl = p.open_pdi_page(indoc, page + 1, L"");
+        if (pagehdl == -1) {
+        }
+        /*
+         * Place the imported page on the output page, and adjust
+         * the page size
+         */
+        p.fit_pdi_page(pagehdl, 0, 0, L"adjustpage");
+        p.close_pdi_page(pagehdl);
+
+        p.end_page_ext(L"");
+      }
+
+      /* Close the current sub-document */
+      p.end_document(L"");
+    }
+    p.close_pdi_document(indoc);
+
+  } catch (PDFlib::Exception& ex) {
+    wcerr << L"PDFlib 发生异常: " << endl
+          << L"[" << ex.get_errnum() << L"] " << ex.get_apiname() << L": "
+          << ex.get_errmsg() << endl
+          << L": " << L"错误的参数选项请使用 - h参数查看帮助" << endl;
+    return 2;
+  }
+  return 0;
+}
+// 从pdf总提取start页到end页，为一个新的pdf文件
+// in:输入文件
+// out: 输出文件
+// start:截取的起始页
+// end:截取的终止页
+int splitPdf(string in, string out, int start, int end) {
+  int indoc, page_count;
+  wstring infile = String2WString(in);
+  wstring outfile_basename = String2WString(out);
+  qDebug() << "filename:" << QString::fromStdWString(outfile_basename);
+  // int SUBDOC_PAGES = subpages;
+  try {
+    PDFlib p;
+    const wstring searchpath = L"./PDFlib-CMap-5.0/resource/cmap";
+    wostringstream optlist;
+    optlist << L"searchpath={{" << searchpath << L"}";
+    optlist << L" {" << GetFontsFolder() << L"}}";
+    p.set_option(optlist.str());
+    p.set_info(L"Creator", L"泛生态业务工具集");
+    p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
+    indoc = p.open_pdi_document(infile, L"");
+    if (indoc == -1) {
+      wcerr << L"打开文档错误: " << p.get_errmsg() << endl;
+    }
+    page_count = (int)p.pcos_get_number(indoc, L"length:pages");
+
+    wstring outfile = outfile_basename + L"_split.pdf";
+
+    /*
+     * Open new sub-document.
+     */
+    if (p.begin_document(outfile, L"") == -1) {
+    }
+    p.set_info(L"Creator", L"泛生态业务工具集");
+    p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
+    for (int page = start; page < end; page++) {
+      /* Page size may be adjusted by fit_pdi_page() */
+      p.begin_page_ext(0, 0, L"width=a4.width height=a4.height");
+      int pagehdl = p.open_pdi_page(indoc, page + 1, L"");
+      if (pagehdl == -1) {
+      }
+      /*
+       * Place the imported page on the output page, and adjust
+       * the page size
+       */
+      p.fit_pdi_page(pagehdl, 0, 0, L"adjustpage");
+      p.close_pdi_page(pagehdl);
+
+      p.end_page_ext(L"");
+    }
+
+    /* Close the current sub-document */
+    p.end_document(L"");
+
+    p.close_pdi_document(indoc);
+
+  } catch (PDFlib::Exception& ex) {
+    wcerr << L"PDFlib 发生异常: " << endl
+          << L"[" << ex.get_errnum() << L"] " << ex.get_apiname() << L": "
+          << ex.get_errmsg() << endl
+          << L": " << L"错误的参数选项请使用 - h参数查看帮助" << endl;
+    return 2;
+  }
+  return 0;
+}
