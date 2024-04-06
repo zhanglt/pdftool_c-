@@ -23,4 +23,16 @@ int images2pdf(QStringList& images, std::string pdfFile);
 int images2pdf(std::string imagesDir, std::string pdfFile, int num);
 void tDirectory(const QDir& dir, QStringList& resultList,
                 const QVariantList& fileTypes);
+int getPages(string pdfFile);
+//将pdf拆分多个文件，subpages是拆分收每一个文件的页数
+// in:输入文件
+// out:输出文件
+// subpages 每个拆分文件的个数
+int splitPdf(string in, string out, int subpages);
+// 从pdf总提取start页到end页，为一个新的pdf文件
+// in:输入文件
+// out: 输出文件
+// start:截取的起始页
+// end:截取的终止页
+int splitPdf(string in, string out, int start, int end);
 #endif  // FUNCTION

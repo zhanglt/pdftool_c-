@@ -15,6 +15,8 @@
 #include "function.h"
 #include "include/QProgressIndicator.h"
 #include "include/mark/mark.h"
+#include "mupdf/fitz.h"
+#include "mupdf/pdf.h"
 #include "pageselector.h"
 #include "qColordialog.h"
 #include "ui_mainwindow.h"
@@ -124,6 +126,7 @@ MainWindow::MainWindow(QWidget *parent)
   QColor color(199, 199, 199);
   palette.setBrush(QPalette::Dark, color);
   ui->pdfView->setPalette(palette);
+  ui->btnExportPDF->setEnabled(false);
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -133,13 +136,11 @@ void MainWindow::open(const QUrl &docLocation) {
     m_document->load(docLocation.toLocalFile());
     const auto documentTitle =
         m_document->metaData(QPdfDocument::Title).toString();
-    setWindowTitle(!documentTitle.isEmpty() ? documentTitle
-                                            : QStringLiteral("PDF Viewer"));
+    setWindowTitle(!documentTitle.isEmpty() ? documentTitle : "PDF浏览器");
   } else {
     // qCDebug(lcExample) << docLocation << "is not a valid local file";
-    QMessageBox::critical(
-        this, tr("Failed to open"),
-        tr("%1 is not a valid local file").arg(docLocation.toString()));
+    QMessageBox::critical(this, tr("文件打开错误"),
+                          tr("%1 无效的本地文件").arg(docLocation.toString()));
   }
   // qCDebug(lcExample) << docLocation;
 }
@@ -154,7 +155,7 @@ void MainWindow::bookmarkSelected(const QModelIndex &index) {
 void MainWindow::on_actionOpen_triggered() {
   QUrl toOpen = QFileDialog::getOpenFileUrl(
       this, tr("选择打开PDF文件"),
-      QUrl("file:///" + ui->lineEditOutput->text()), "Documents (*.pdf)");
+      QUrl("file:///" + ui->lineEditOutput->text()), "文档 (*.pdf)");
 
   if (toOpen.isValid()) open(toOpen);
   emit m_zoomSelector->zoomModeChanged(QPdfView::FitToWidth);
@@ -209,6 +210,7 @@ void MainWindow::on_btnColorSelect_clicked() {
     QString gStr = QString("%1").arg(m_green & 0xFF, 2, 16, QChar('0'));
     ui->lineEditColor->setText("#" + rStr + gStr + bstr);
     ui->lineEditColor->setStyleSheet("color:" + ui->lineEditColor->text());
+
     viewWatermark();
   }
 }
@@ -296,6 +298,7 @@ void MainWindow::on_btnAddWater_clicked() {
   ui->textEditLog->append("增加水印用时:" + QString::number(time.elapsed()) +
                           "毫秒,结果文件保存在:" + ui->lineEditOutput->text() +
                           "/_out_/");
+  ui->btnExportPDF->setEnabled(true);
 }
 
 /*
@@ -309,6 +312,7 @@ void MainWindow::viewWatermark() {
     QMessageBox::information(nullptr, "提示", "水印文本不能为空");
     return;
   }
+  /*
   QString inputDir = ui->lineEditInput->text();
   if (inputDir.isEmpty()) {
     QMessageBox::information(nullptr, "提示", "输入目录不能为空");
@@ -319,6 +323,7 @@ void MainWindow::viewWatermark() {
     QMessageBox::information(nullptr, "提示", "输出目录不能为空");
     return;
   }
+*/
   QString color = ui->lineEditColor->text();
   QString opacity = ui->lineEditOpacity->text() + "%";
   QString rotate = ui->lineEditRotate->text();
@@ -409,6 +414,13 @@ void MainWindow::addWatermarkSingle(QString text, QString inputDir,
  **/
 
 void MainWindow::on_btnExportPDF_clicked() {
+  QString outputDir = ui->lineEditOutput->text();
+  QFileInfo output(outputDir);
+  if (!output.isDir()) {
+    ui->lineEditOutput->setFocus();
+    QMessageBox::information(nullptr, "提示", "输入目录或者选择正确目录");
+    return;
+  }
   QElapsedTimer time;
   time.start();
   QDir dir(ui->lineEditOutput->text() + "/_out_/");
@@ -428,6 +440,11 @@ void MainWindow::exportPdf(QDir pdfdir) {
   ui->btnAddWater->setEnabled(false);
   QStringList files;
   traverseDirectory(pdfdir, files, "pdf", "");
+  if (files.length() < 1) {
+    QMessageBox::information(
+        nullptr, "系统提示！",
+        "目标目录：" + ui->lineEditOutput->text() + "/_out_ 中没有文件");
+  }
   for (QString &file : files) {
     pdf2imageThread = new pdf2imageThreadSingle();
     //为每个线程连接一个信号，用于监测线程池的线程工作完成情况，建议Qthreadpoll增加一个finish信号。
@@ -447,9 +464,11 @@ void MainWindow::exportPdf(QDir pdfdir) {
         bool success = imageRootDir.removeRecursively();
         // 检查删除操作是否成功
         if (success) {
-          qDebug() << "图片目录：" << imageRootDir.path() << "删除成功.";
+          ui->textEditLog->append("图片目录：" + imageRootDir.path() +
+                                  "删除成功.");
         } else {
-          qDebug() << "图片目录：" << imageRootDir.path() << "删除失败";
+          ui->textEditLog->append("图片目录：" + imageRootDir.path() +
+                                  "删除失败");
         }
       }
     });
@@ -464,39 +483,43 @@ void MainWindow::exportPdf(QDir pdfdir) {
     QString filename = fileInfo.fileName();
     createDirectory(path);
     pdf2imageThread->setTargetFile(path + "/" + filename);
+    pdf2imageThread->setIs2pdf(true);
     pdf2imageThread->setResolution(ui->cBoxResolution->currentText().toInt());
     threadPool.start(pdf2imageThread);
     // threadPool.waitForDone();
   }
+  if (files.length() > 0) {
+    qprogresssindicat();
+  }
+  /*
+    QProgressIndicator *pIndicator = nullptr;
+    QDialog dialog;
+    QObject::connect(this, &MainWindow::Finished, &dialog, &QDialog::close);
+    //转换开始 增加水印按钮设置为不可用
+    dialog.setWindowTitle("文件转换处理...");
+    dialog.resize(200, 20);
+    // /dialog.setWindowFlags(Qt::CustomizeWindowHint |
+    // Qt::WindowCloseButtonHint);
+    dialog.setWindowFlags(dialog.windowFlags() | Qt::FramelessWindowHint);
+    pIndicator = new QProgressIndicator(&dialog);
+    QVBoxLayout *hLayout = new QVBoxLayout(&dialog);  // 水平布局
+    QLabel *l1 = new QLabel(
+        "正在转换。。。。"
+        ""
+        "");
 
-  QProgressIndicator *pIndicator = nullptr;
-  QDialog dialog;
+    hLayout->setMargin(0);           // 与窗体边无距离 尽量占满
+    hLayout->addWidget(pIndicator);  // 加入控件
+    hLayout->addWidget(l1);
+    hLayout->setAlignment(pIndicator, Qt::AlignCenter);  // 控件居中
+    hLayout->setAlignment(l1, Qt::AlignCenter);          // 控件居中
+    // ui->tab_2->setLayout(hLayout);
+    dialog.setLayout(hLayout);
 
-  QObject::connect(this, &MainWindow::Finished, &dialog, &QDialog::close);
-  //转换开始 增加水印按钮设置为不可用
-  dialog.setWindowTitle("文件转换处理...");
-  dialog.resize(200, 20);
-  // /dialog.setWindowFlags(Qt::CustomizeWindowHint |
-  // Qt::WindowCloseButtonHint);
-  dialog.setWindowFlags(dialog.windowFlags() | Qt::FramelessWindowHint);
-  pIndicator = new QProgressIndicator(&dialog);
-  QVBoxLayout *hLayout = new QVBoxLayout(&dialog);  // 水平布局
-  QLabel *l1 = new QLabel(
-      "正在转换。。。。"
-      ""
-      "");
-
-  hLayout->setMargin(0);           // 与窗体边无距离 尽量占满
-  hLayout->addWidget(pIndicator);  // 加入控件
-  hLayout->addWidget(l1);
-  hLayout->setAlignment(pIndicator, Qt::AlignCenter);  // 控件居中
-  hLayout->setAlignment(l1, Qt::AlignCenter);          // 控件居中
-  // ui->tab_2->setLayout(hLayout);
-  dialog.setLayout(hLayout);
-
-  pIndicator->setColor(QColor(9, 126, 186));
-  pIndicator->startAnimation();  //启动动画
-  dialog.exec();
+    pIndicator->setColor(QColor(9, 126, 186));
+    pIndicator->startAnimation();  //启动动画
+    dialog.exec();
+  */
 }
 
 void MainWindow::on_cBoxFont_currentIndexChanged(int index) { viewWatermark(); }
@@ -504,13 +527,9 @@ void MainWindow::on_cBoxFont_currentIndexChanged(int index) { viewWatermark(); }
 // 选择图片文件
 void MainWindow::on_btnSelectImageFile_clicked() {
   QString filePath = QFileDialog::getOpenFileName(
-      nullptr, "Open Image", QDir::homePath(),
-      "Images Files (*.png *.PNG *.jpg *.JPG *.jpeg *.JPEG)");
-
-  // 如果用户选择了目录，则输出所选目录的路径
-
+      nullptr, "选择图像文件", QDir::homePath(),
+      "图像文件 (*.png *.PNG *.jpg *.JPG *.jpeg *.JPEG)");
   if (!filePath.isEmpty()) {
-    qDebug() << "选择的目录：" << filePath;
     ui->lineEditImageFile->setText(filePath);
   }
 }
@@ -524,19 +543,19 @@ void MainWindow::on_btnTransform_clicked() {
     ui->textEditLog->append("文件保存在：" + info.filePath() + ".pdf\n");
     this->open(QUrl::fromLocalFile(info.filePath() + ".pdf"));
     emit this->m_zoomSelector->zoomModeChanged(QPdfView::FitToWidth);
+    ui->textEditLog->append("PDF转换完成保存在：" + info.filePath() + ".pdf");
     QMessageBox::information(nullptr, "PDF转换完成！",
                              "文件保存在：" + info.filePath() + ".pdf\n");
   }
 }
 
+// 选择图片目录
 void MainWindow::on_btnSelectImageDir_clicked() {
   QString directory = QFileDialog::getExistingDirectory(
-      nullptr, "选择输入目录", "",
+      nullptr, "选择图片目录", "",
       QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-
-  // 如果用户选择了目录，则输出所选目录的路径
   if (!directory.isEmpty()) {
-    qDebug() << "选择的目录：" << directory;
+    // qDebug() << "选择的目录：" << directory;
     ui->lineEditImageDir->setText(directory);
   }
 }
@@ -550,6 +569,226 @@ void MainWindow::on_btnTransformBat_clicked() {
     image2pdf(file.toStdString(), (file + ".pdf").toStdString());
   }
   QMessageBox::information(nullptr, "PDF转换完成！", "PDF保存在图片源目录中");
-  ui->textEditLog->append("PDF保存在图片源目录中:" +
-                          ui->lineEditImageDir->text());
+  ui->textEditLog->append("PDF保存源目录中:" + ui->lineEditImageDir->text());
+}
+
+// pdf转图片--选择pdf文件
+void MainWindow::on_btnSelectPDFFile_clicked() {
+  QString filePath = QFileDialog::getOpenFileName(
+      nullptr, "选择PDF文件", QDir::homePath(), "PDF文件 (*.pdf *.PDF)");
+  if (!filePath.isEmpty()) {
+    qDebug() << "选择的目录：" << filePath;
+    ui->lineEditPdfFile->setText(filePath);
+  }
+  this->open(QUrl::fromLocalFile(filePath));
+}
+// pdf转图片操作
+void MainWindow::on_btnPdfToImage_clicked() {
+  QString file = ui->lineEditPdfFile->text();
+  QString path = file.left(file.length() - 4);
+
+  pdf2imageThread = new pdf2imageThreadSingle();
+
+  pdf2imageThread->setSourceFile(file);
+  pdf2imageThread->setIs2pdf(false);
+  //通过pdf文件目录，生成图片目录，并创建。
+  qDebug() << "file:" << path;
+  createDirectory(path);
+  pdf2imageThread->setImagePath(path);
+  pdf2imageThread->setResolution(100);
+
+  //为每个线程连接一个信号，用于监测线程池的线程工作完成情况，建议Qthreadpoll增加一个finish信号。
+  connect(pdf2imageThread, &pdf2imageThreadSingle::addFinish, this, [=]() {
+    // 判断线程池中的活动线程数，如果为0则认为所有工作线程结束。
+    if (threadPool.activeThreadCount() == 0) {
+      //将增加水印按钮设置为可用状态
+      emit this->Finished();
+      ui->textEditLog->append("图片保存目录:" + path);
+      QMessageBox::information(nullptr, "导出图片完成！", "导出图片完成！");
+    }
+  });
+
+  threadPool.start(pdf2imageThread);
+  qprogresssindicat();
+}
+
+void MainWindow::qprogresssindicat() {
+  QProgressIndicator *pIndicator = nullptr;
+  QDialog dialog;
+  QObject::connect(this, &MainWindow::Finished, &dialog, &QDialog::close);
+  //转换开始 增加水印按钮设置为不可用
+  dialog.setWindowTitle("文件转换处理...");
+  dialog.resize(200, 20);
+  // /dialog.setWindowFlags(Qt::CustomizeWindowHint |
+  // Qt::WindowCloseButtonHint);
+  dialog.setWindowFlags(dialog.windowFlags() | Qt::FramelessWindowHint);
+  pIndicator = new QProgressIndicator(&dialog);
+  QVBoxLayout *hLayout = new QVBoxLayout(&dialog);  // 水平布局
+  QLabel *l1 = new QLabel(
+      "正在转换。。。。"
+      ""
+      "");
+  hLayout->setMargin(1);           // 与窗体边无距离 尽量占满
+  hLayout->addWidget(pIndicator);  // 加入控件
+  hLayout->addWidget(l1);
+  hLayout->setAlignment(pIndicator, Qt::AlignCenter);  // 控件居中
+  hLayout->setAlignment(l1, Qt::AlignCenter);          // 控件居中
+  // ui->tab_2->setLayout(hLayout);
+  dialog.setLayout(hLayout);
+
+  pIndicator->setColor(QColor(12, 52, 255));
+  pIndicator->startAnimation();  //启动动画
+  dialog.exec();
+}
+// 选择拆分pdf文件
+void MainWindow::on_btnSelectFilesplit_clicked() {
+  QString fileName = QFileDialog::getOpenFileName(
+      nullptr, "选择PDF文件", QDir::homePath(), "PDF文件 (*.pdf *.PDF)");
+  if (!fileName.isEmpty()) {
+    qDebug() << "选择的目录：" << fileName;
+    ui->lineEditInputFilesplit->setText(fileName);
+  }
+  if (fileName.length() > 0) {
+    this->open(QUrl::fromLocalFile(fileName));
+
+    ui->lineEditSplitpages->setText(
+        QString::number(getPages(fileName.toStdString())));
+    ui->lineEditSplitEnd->setText(
+        QString::number(getPages(fileName.toStdString())));
+    QFileInfo path(fileName);
+    ui->lineEditSplitOutput->setText(path.absolutePath());
+  }
+}
+// 拆分pdf的文件检查
+void MainWindow::on_lineEditInputFilesplit_textChanged(
+    const QString &filename) {
+  // 判断是否为pdf文件。
+  QFileInfo fileInfo(filename);
+  if ((fileInfo.isFile()) && (filename.contains(".pdf"))) {
+    this->open(QUrl::fromLocalFile(filename));
+    ui->lineEditSplitpages->setText(
+        QString::number(getPages(filename.toStdString())));
+    ui->lineEditSplitEnd->setText(
+        QString::number(getPages(filename.toStdString())));
+    QFileInfo path(filename);
+    ui->lineEditSplitOutput->setText(path.absolutePath());
+
+  } else {
+    if (!filename.isEmpty()) {
+      QMessageBox::information(nullptr, "警告！", "请选择正确的pdf文件");
+    }
+    ui->lineEditInputFilesplit->setText("");
+    return;
+  }
+}
+
+void MainWindow::on_btnSelectSplitDir_clicked() {
+  QString directory = QFileDialog::getExistingDirectory(
+      nullptr, "选择输出目录", "",
+      QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+  // 如果用户选择了目录，则输出所选目录的路径
+  if (!directory.isEmpty()) {
+    // qDebug() << "选择的目录：" << directory;
+    ui->lineEditSplitOutput->setText(directory);
+  }
+}
+
+void MainWindow::on_btnSplitPdf_clicked() {
+  if ((ui->lineEditInputFilesplit->text() == "") ||
+      (ui->lineEditSplitOutput->text() == "")) {
+    QMessageBox::information(nullptr, "警告！", "请选择输入文件、输出目录");
+    return;
+  }
+  int pages = ui->lineEditSplitpages->text().toInt();
+
+  string in = ui->lineEditInputFilesplit->text().toStdString();
+  QFileInfo file(ui->lineEditInputFilesplit->text());
+  string filename =
+      file.fileName().left(file.fileName().length() - 4).toStdString();
+  string out = ui->lineEditSplitOutput->text().toStdString() + "/" + filename;
+
+  if (ui->radioButtonSpliterange->isChecked()) {
+    QString range = ui->lineEditSplitscope->text();
+
+    // 使用split函数分割字符串
+    QStringList parts;
+    int start = 0, end = 0;
+
+    QRegularExpression regex("^\\d+-\\d+$");
+    if (regex.match(range).hasMatch()) {
+      parts = range.split("-");
+      start = parts[0].toInt() - 1;
+      end = parts[1].toInt();
+    } else {
+      QMessageBox::information(nullptr, "警告！",
+                               "目前之支持一个n-n格式的拆分");
+      return;
+    }
+
+    if (end > pages) {
+      QMessageBox::information(nullptr, "警告！", "拆分范围不能大于文档总页数");
+      return;
+    }
+    if (start > end) {
+      QMessageBox::information(nullptr, "警告！",
+                               "拆分范围开始值不能大于结束值");
+      return;
+    }
+    if (splitPdf(in, out, start, end) == 0) {
+      this->open(
+          QUrl::fromLocalFile(QString::fromStdString(out + "_split.pdf")));
+    }
+    QMessageBox::information(
+        nullptr, "PDF拆分完成！",
+        "文件保存在保存：" + ui->lineEditSplitOutput->text());
+
+    ui->textEditLog->append("拆分PDF保存目录中:" +
+                            ui->lineEditSplitOutput->text());
+
+  } else {
+    /*
+    先按照拆分范围生成一个临时文件保存在临时文件夹
+    再将临时文件按照规则拆分成多个文件
+    */
+    int start = ui->lineEditSplitStart->text().toInt() - 1;
+    int end = ui->lineEditSplitEnd->text().toInt();
+    if ((end > pages) || (start > pages)) {
+      QMessageBox::information(nullptr, "警告！", "拆分范围不能大于文档总页数");
+      return;
+    }
+    if (start > end) {
+      QMessageBox::information(nullptr, "警告！",
+                               "拆分范围开始值不能大于结束值");
+      return;
+    }
+    QString tempDir =
+        QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    qDebug() << "临时目录：" << tempDir;
+    splitPdf(in, tempDir.toStdString() + "/" + filename, start, end);
+
+    int subPages = ui->lineEditSubPages->text().toInt();
+    splitPdf(tempDir.toStdString() + "/" + filename + "_split.pdf", out,
+             subPages);
+    QFile tempfile(tempDir + "/" + QString::fromStdString(filename) +
+                   "_split.pdf");
+    tempfile.remove();
+    QMessageBox::information(
+        nullptr, "PDF拆分完成！",
+        "文件保存在保存：" + ui->lineEditSplitOutput->text());
+
+    ui->textEditLog->append("拆分PDF保存目录中:" +
+                            ui->lineEditSplitOutput->text());
+  }
+}
+
+void MainWindow::on_lineEditSplitOutput_textChanged(const QString &filepath) {
+  QFileInfo path(filepath);
+  if (!path.isDir()) {
+    if (!filepath.isEmpty()) {
+      QMessageBox::information(nullptr, "警告！", "请选择正确的目录");
+    }
+    ui->lineEditSplitOutput->setText("");
+    return;
+  }
 }
