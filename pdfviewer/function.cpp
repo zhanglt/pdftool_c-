@@ -4,6 +4,8 @@
 #include <sys/stat.h>
 
 #include <QDebug>
+#include <QRegularExpression>
+#include <codecvt>
 #include <iostream>
 #include <string>
 
@@ -15,6 +17,50 @@
 #pragma comment(lib, "E:/test/qt/win/QtWidgetsApplication1/lib/pdflib.lib")
 using namespace std;
 using namespace pdflib;
+bool isPDFByExtension(const QString& fileName) {
+  return fileName.toLower().endsWith(".pdf");
+}
+bool isPDFByMagicNumber(const QString& filePath) {
+  QFile file(filePath);
+  if (file.open(QIODevice::ReadOnly)) {
+    QByteArray magicNumber = file.read(4);
+    file.close();
+    return magicNumber.startsWith("%PDF");
+  }
+  return false;
+}
+bool isImageByExtension(const QString& fileName) {
+  QString ext = fileName.toLower().right(4);
+  return ext == ".jpg" || ext == "jpeg" || ext == ".png" || ext == ".bmp";
+}
+bool isImageByMagicNumber(const QString& filePath) {
+  QFile file(filePath);
+  if (file.open(QIODevice::ReadOnly)) {
+    QByteArray magicNumber = file.read(4);
+    file.close();
+    return magicNumber.startsWith(QByteArray("\xFF\xD8\xFF", 3))         // JPEG
+           || magicNumber.startsWith(QByteArray("\x89\x50\x4E\x47", 4))  // PNG
+           || magicNumber.startsWith(QByteArray("BM", 2));               // BMP
+  }
+  return false;
+}
+
+bool isNumeric(const QString& str) {
+  QRegularExpression re("\\d+");  // 匹配一个或多个数字
+  QRegularExpressionMatch match = re.match(str);
+  return match.hasMatch() && match.capturedLength() == str.length();
+}
+
+std::wstring String2WString(const string& str) {
+  wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+  return converter.from_bytes(str);
+}
+// 将 QString 转换为 wstring
+std::wstring QString2WString(const QString& str) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.from_bytes(str.toStdString());
+}
+
 // image文件转换为pdf文件
 int image2pdf(std::string imageFile, std::string pdfFile) {
   PDFlib p;
@@ -330,8 +376,6 @@ int splitPdf(string in, string out, int subpages) {
   int indoc, page_count;
   wstring infile = String2WString(in);
   wstring outfile_basename = String2WString(out);
-  qDebug() << "filename:" << QString::fromStdWString(outfile_basename);
-  // int SUBDOC_PAGES = subpages;
   try {
     PDFlib p;
     const wstring searchpath = L"./PDFlib-CMap-5.0/resource/cmap";
@@ -354,11 +398,10 @@ int splitPdf(string in, string out, int subpages) {
       std::wstringstream s1, s0;
       s0 << outdoc_counter;
       s1 << outdoc_counter + 1;
-
       wstring outfile = outfile_basename + L"_" + s1.str() + L".pdf";
 
       /*
-       * Open new sub-document.
+       * 打开新的子文档.
        */
       if (p.begin_document(outfile, L"") == -1) {
       }
@@ -382,7 +425,7 @@ int splitPdf(string in, string out, int subpages) {
         p.end_page_ext(L"");
       }
 
-      /* Close the current sub-document */
+      /* 关闭子文档 */
       p.end_document(L"");
     }
     p.close_pdi_document(indoc);
@@ -405,7 +448,7 @@ int splitPdf(string in, string out, int start, int end) {
   int indoc, page_count;
   wstring infile = String2WString(in);
   wstring outfile_basename = String2WString(out);
-  qDebug() << "filename:" << QString::fromStdWString(outfile_basename);
+  // qDebug() << "filename:" << QString::fromStdWString(outfile_basename);
   // int SUBDOC_PAGES = subpages;
   try {
     PDFlib p;
@@ -421,11 +464,9 @@ int splitPdf(string in, string out, int start, int end) {
       wcerr << L"打开文档错误: " << p.get_errmsg() << endl;
     }
     page_count = (int)p.pcos_get_number(indoc, L"length:pages");
-
     wstring outfile = outfile_basename + L"_split.pdf";
-
     /*
-     * Open new sub-document.
+     * 打开子文档
      */
     if (p.begin_document(outfile, L"") == -1) {
     }
@@ -446,10 +487,8 @@ int splitPdf(string in, string out, int start, int end) {
 
       p.end_page_ext(L"");
     }
-
-    /* Close the current sub-document */
+    /* 关闭子文档 */
     p.end_document(L"");
-
     p.close_pdi_document(indoc);
 
   } catch (PDFlib::Exception& ex) {
@@ -460,4 +499,81 @@ int splitPdf(string in, string out, int start, int end) {
     return 2;
   }
   return 0;
+}
+//将文件列表fileList中的文件合并成一个PDF文件
+// fileList:文件列表
+// outFile: 合并后的文件
+int mergePdf(std::list<std::string> fileList, string outFile) {
+  /* This is where the data files are. Adjust as necessary. */
+  wstring searchpath = L"../input";
+
+  /* By default annotations are also imported. In some cases this
+   * requires the Noto fonts for creating annotation appearance streams.
+   * We therefore set the searchpath to also point to the font directory.
+   */
+  wstring fontpath = L"../resource/font";
+  wstring outfile = String2WString(outFile);
+  wstring title = L"开始合并...";
+
+  PDFlib p;
+
+  try {
+    PDFlib p;
+    const wstring searchpath = L"./PDFlib-CMap-5.0/resource/cmap";
+    wostringstream optlist;
+    optlist << L"searchpath={{" << searchpath << L"}";
+    optlist << L" {" << GetFontsFolder() << L"}}";
+    p.set_option(optlist.str());
+    p.set_info(L"Creator", L"泛生态业务工具集");
+    p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
+    if (p.begin_document(outfile, L"") == -1)
+      wcerr << L"Error: " + p.get_errmsg();
+
+    for (const std::string& file : fileList) {
+      wstring wfile = String2WString(file);
+
+      int indoc, endpage, pageno, page;
+      /* Open the input PDF */
+      indoc = p.open_pdi_document(wfile, L"");
+      if (indoc == -1) {
+        wcerr << L"Error: " + p.get_errmsg();
+        continue;
+      }
+
+      endpage = (int)p.pcos_get_number(indoc, L"length:pages");
+
+      /* Loop over all pages of the input document */
+      for (pageno = 1; pageno <= endpage; pageno++) {
+        page = p.open_pdi_page(indoc, pageno, L"");
+
+        if (page == -1) {
+          wcerr << L"Error: " + p.get_errmsg();
+          continue;
+        }
+        /* Page size may be adjusted by fit_pdi_page(). */
+        p.begin_page_ext(0, 0, L"width=a4.width height=a4.height");
+
+        /* Create a bookmark with the file name */
+        if (pageno == 1) p.create_bookmark(wfile, L"");
+
+        /* Place the imported page on the output page, and
+         * adjust the page size. If the page contains annotations
+         * these are also imported.
+         */
+        p.fit_pdi_page(page, 0, 0, L"adjustpage");
+        p.close_pdi_page(page);
+
+        p.end_page_ext(L"");
+      }
+      p.close_pdi_document(indoc);
+    }
+    p.end_document(L"");
+    return 0;
+  } catch (PDFlib::Exception& ex) {
+    wcerr << L"PDFlib 发生异常: " << endl
+          << L"[" << ex.get_errnum() << L"] " << ex.get_apiname() << L": "
+          << ex.get_errmsg() << endl
+          << L": " << L"错误的参数选项请使用 - h参数查看帮助" << endl;
+    return 2;
+  }
 }
