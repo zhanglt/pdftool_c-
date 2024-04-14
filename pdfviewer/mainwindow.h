@@ -44,10 +44,11 @@ class MainWindow : public QMainWindow {
                           QString color, QString opacity, QString rotate,
                           QString font);
   void exportPdf(QDir dir);
-
+  // void SlotSetCurrRow();
  private slots:
   void bookmarkSelected(const QModelIndex &index);
   void qprogresssindicat();
+  void initTable();
 
   // action handlers
   void on_actionOpen_triggered();
@@ -89,6 +90,14 @@ class MainWindow : public QMainWindow {
   void on_btnSplitPdf_clicked();
 
   void on_lineEditSplitOutput_textChanged(const QString &filepath);
+
+  void on_btnAddFile_clicked();
+
+  void on_btnSelectMergeDir_clicked();
+
+  void on_btnMerge_clicked();
+
+  void on_lineEditInputFilesplit_editingFinished();
 
  signals:
   void Finished();
