@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   // w.setStyleSheet(styleSheet);
 
   QStringList args = a.arguments();
-
+  w.setFixedSize(818, 631);
   w.setWindowFlags(w.windowFlags() & ~Qt::WindowMinMaxButtonsHint |
                    Qt::WindowMinimizeButtonHint);
   w.show();
