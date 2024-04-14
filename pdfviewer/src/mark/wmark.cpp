@@ -17,20 +17,10 @@ using namespace std;
 using namespace pdflib;
 #include <QDebug>
 
+#include "function.h"
 #include "lib/pdflib.hpp"
 //#include "E:/test/qt/win/QtWidgetsApplication1/lib/pdflib.hpp"
 #pragma comment(lib, "E:/test/qt/win/QtWidgetsApplication1/lib/pdflib.lib")
-
-// ½« QString ×ª»»Îª wstring
-std::wstring QString2WString(const QString& str) {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.from_bytes(str.toStdString());
-}
-
-std::wstring String2WString(const string& str) {
-  wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
-  return converter.from_bytes(str);
-}
 
 /*
 std::wstring String2WString(const std::string& s)
