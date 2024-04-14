@@ -8,6 +8,13 @@
 #include "mupdf/fitz.h"
 #include "mupdf/pdf.h"
 using namespace std;
+bool isPDFByExtension(const QString& fileName);
+bool isPDFByMagicNumber(const QString& filePath);
+bool isImageByExtension(const QString& fileName);
+bool isImageByMagicNumber(const QString& filePath);
+bool isNumeric(const QString& str);
+std::wstring String2WString(const string& str);
+std::wstring QString2WString(const QString& str);
 //遍历一个目录及其子目录中的所有文件，并将其中的 PDF 文件路径添加到结果列表中。
 void traverseDirectory(const QDir& dir, QStringList& resultList,
                        QString fileType, QString exclude);
@@ -35,4 +42,5 @@ int splitPdf(string in, string out, int subpages);
 // start:截取的起始页
 // end:截取的终止页
 int splitPdf(string in, string out, int start, int end);
+int mergePdf(std::list<string> fileList, string outFile);
 #endif  // FUNCTION
