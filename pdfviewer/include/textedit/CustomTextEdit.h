@@ -2,16 +2,17 @@
 
 #include <QDragEnterEvent>
 #include <QDropEvent>
-#include <QLineEdit>
+#include <QTextEdit>
 #include <QMimeData>
 #include <QtWidgets/Qwidget>
-class CustomLineEdit : public QLineEdit {
+class CustomTextEdit : public QTextEdit {
   Q_OBJECT
 
  public:
-  CustomLineEdit(QWidget* parent = nullptr);
-  ~CustomLineEdit();
+  CustomTextEdit(QWidget* parent = nullptr);
+  ~CustomTextEdit();
 
+ protected:
   ///< 拖动文件到窗口 触发
   void dragEnterEvent(QDragEnterEvent* event);
   ///< 拖动文件到窗口移动文件 触发
