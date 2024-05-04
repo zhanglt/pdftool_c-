@@ -66,9 +66,10 @@ class mytable : public QTableWidget {
           if (isPDFByExtension(filePath) && isPDFByMagicNumber(filePath)) {
             AddFile(filePath);
           } else {
-            QMessageBox::information(nullptr, "提示信息！",
-                                     "请选择正确的PDF类型文件");
-            return;
+            QMessageBox::information(
+                nullptr, "提示信息！",
+                filePath + " 不是PDF格式文件，不能加入合并列表");
+            // return;
           }
         }
       }
