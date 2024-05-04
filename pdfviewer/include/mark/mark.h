@@ -24,6 +24,8 @@ std::wstring QString2WString(const QString& str);
 int addWatermark(const QString& i = "in.pdf", const QString& o = "out.pdf",
                  const QString& t = "联通数字科技有限公司总部投标专用文档",
                  const QString& p = "15%", const QString& c = "gray",
-                 const QString& r = "45", const QString& f = "simkai");
+                 const QString& r = "45", const QString& f = "simkai",
+                 const QString& s = "0.6", const QString& va = "center",
+                 const QString& vs = "10");
 
 #endif  // WATERMARL_H
