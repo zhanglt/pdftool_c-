@@ -47,16 +47,17 @@ void watermarkThreadSingle::run() {
   //  qDebug()<<"输入："<<m_filename;
   // qDebug()<<"输出："<<pathChange(m_input,m_output, m_filename,
   // "_out_").replace("//", "/");
-
+  // if ((!m_input.contains("_out_")) && (!m_input.contains("_pdf_"))) {
   int r = addWatermark(m_input, m_output, m_text, m_opacity, m_color, m_rotate,
                        m_font);
   m_mutex->lock();
   m_wmap->insert(m_input, r);
   m_mutex->unlock();
   // int r=addWatermark("h:/in.pdf", "h:/out.pdf",
-  // "联通数字科技有限公司总部投标专用文档", "15%", "#c8250c", "45", "simkai");
-  // int milsec = time.elapsed();
-  // qDebug() << "生成" << m_num << "个随机数总共用时:" << milsec << "毫秒";
+  // "联通数字科技有限公司总部投标专用文档", "15%", "#c8250c", "45",
+  // "simkai"); int milsec = time.elapsed(); qDebug() << "生成" << m_num <<
+  // "个随机数总共用时:" << milsec << "毫秒";
 
   emit addFinish(*m_wmap);
+  //  }
 }
