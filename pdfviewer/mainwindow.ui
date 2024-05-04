@@ -101,8 +101,8 @@
         <widget class="QComboBox" name="cBoxFont">
          <property name="geometry">
           <rect>
-           <x>90</x>
-           <y>260</y>
+           <x>229</x>
+           <y>224</y>
            <width>71</width>
            <height>25</height>
           </rect>
@@ -139,7 +139,7 @@ font: 11pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>370</x>
-           <y>298</y>
+           <y>292</y>
            <width>61</width>
            <height>20</height>
           </rect>
@@ -182,9 +182,9 @@ font: 12pt &quot;等线&quot;;</string>
         <widget class="CustomLineEdit" name="lineEditColor">
          <property name="geometry">
           <rect>
-           <x>289</x>
+           <x>309</x>
            <y>224</y>
-           <width>81</width>
+           <width>61</width>
            <height>25</height>
           </rect>
          </property>
@@ -224,7 +224,7 @@ font: 12pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>9</x>
-           <y>338</y>
+           <y>320</y>
            <width>81</width>
            <height>30</height>
           </rect>
@@ -252,7 +252,7 @@ font: 12pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>370</x>
-           <y>340</y>
+           <y>322</y>
            <width>61</width>
            <height>20</height>
           </rect>
@@ -271,9 +271,9 @@ font: 12pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>9</x>
-           <y>288</y>
+           <y>282</y>
            <width>81</width>
-           <height>30</height>
+           <height>40</height>
           </rect>
          </property>
          <property name="font">
@@ -336,8 +336,8 @@ font: 12pt &quot;等线&quot;;</string>
         <widget class="QLabel" name="label">
          <property name="geometry">
           <rect>
-           <x>8</x>
-           <y>260</y>
+           <x>155</x>
+           <y>226</y>
            <width>71</width>
            <height>22</height>
           </rect>
@@ -369,8 +369,8 @@ font: 12pt &quot;等线&quot;;</string>
         <widget class="QPushButton" name="btnAddWater">
          <property name="geometry">
           <rect>
-           <x>60</x>
-           <y>388</y>
+           <x>90</x>
+           <y>360</y>
            <width>101</width>
            <height>31</height>
           </rect>
@@ -391,23 +391,6 @@ background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #e0e0e0,stop:1 
          </property>
          <property name="text">
           <string>增加水印</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label_3">
-         <property name="geometry">
-          <rect>
-           <x>212</x>
-           <y>225</y>
-           <width>91</width>
-           <height>25</height>
-          </rect>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">color: rgb(121, 121, 121);
-font: 12pt &quot;等线&quot;;</string>
-         </property>
-         <property name="text">
-          <string>字体颜色:</string>
          </property>
         </widget>
         <widget class="QLabel" name="labWater">
@@ -483,7 +466,7 @@ font: 12pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>90</x>
-           <y>340</y>
+           <y>322</y>
            <width>271</width>
            <height>22</height>
           </rect>
@@ -505,7 +488,7 @@ font: 12pt &quot;等线&quot;;</string>
          <property name="geometry">
           <rect>
            <x>90</x>
-           <y>298</y>
+           <y>292</y>
            <width>271</width>
            <height>22</height>
           </rect>
@@ -532,8 +515,8 @@ font: 12pt &quot;等线&quot;;</string>
         <widget class="QPushButton" name="btnExportPDF">
          <property name="geometry">
           <rect>
-           <x>240</x>
-           <y>388</y>
+           <x>250</x>
+           <y>360</y>
            <width>101</width>
            <height>31</height>
           </rect>
@@ -561,7 +544,7 @@ background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #e0e0e0,stop:1 
           <rect>
            <x>90</x>
            <y>224</y>
-           <width>71</width>
+           <width>60</width>
            <height>25</height>
           </rect>
          </property>
@@ -606,9 +589,9 @@ font: 11pt &quot;等线&quot;;</string>
         <widget class="CustomLineEdit" name="lineEdit_fs">
          <property name="geometry">
           <rect>
-           <x>290</x>
+           <x>370</x>
            <y>260</y>
-           <width>81</width>
+           <width>61</width>
            <height>21</height>
           </rect>
          </property>
@@ -617,6 +600,9 @@ font: 11pt &quot;等线&quot;;</string>
          </property>
          <property name="text">
           <string>25</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
         <widget class="CustomTextEdit" name="lineEditWaterText">
@@ -642,18 +628,46 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <widget class="QLabel" name="label_2">
          <property name="geometry">
           <rect>
-           <x>210</x>
+           <x>10</x>
            <y>260</y>
            <width>71</width>
            <height>22</height>
           </rect>
          </property>
          <property name="styleSheet">
-          <string notr="true">color: rgb(121, 121, 121);
+          <string notr="true">
 font: 12pt &quot;等线&quot;;</string>
          </property>
          <property name="text">
           <string>字体字号:</string>
+         </property>
+        </widget>
+        <widget class="CustomSlider" name="sliderFontsize">
+         <property name="geometry">
+          <rect>
+           <x>90</x>
+           <y>260</y>
+           <width>271</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="minimum">
+          <number>8</number>
+         </property>
+         <property name="maximum">
+          <number>50</number>
+         </property>
+         <property name="singleStep">
+          <number>0</number>
+         </property>
+         <property name="value">
+          <number>25</number>
+         </property>
+         <property name="sliderPosition">
+          <number>25</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
         </widget>
         <zorder>labOutput</zorder>
@@ -670,7 +684,6 @@ font: 12pt &quot;等线&quot;;</string>
         <zorder>label</zorder>
         <zorder>btnColorSelect</zorder>
         <zorder>btnAddWater</zorder>
-        <zorder>label_3</zorder>
         <zorder>lineEditInput</zorder>
         <zorder>sliderOpacity</zorder>
         <zorder>sliderRotate</zorder>
@@ -681,6 +694,7 @@ font: 12pt &quot;等线&quot;;</string>
         <zorder>lineEdit_fs</zorder>
         <zorder>lineEditWaterText</zorder>
         <zorder>label_2</zorder>
+        <zorder>sliderFontsize</zorder>
        </widget>
        <widget class="QWidget" name="tab_transform">
         <attribute name="title">

@@ -113,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
   connect(ui->sliderRotate, &QSlider::sliderReleased, this,
           &MainWindow::viewWatermark);
 
-  connect(ui->lineEdit_fs, &CustomLineEdit::dataChanged, this,
+  connect(ui->sliderFontsize, &QSlider::sliderReleased, this,
           &MainWindow::viewWatermark);
 
   // 更新slider后同步更新
@@ -123,6 +123,9 @@ MainWindow::MainWindow(QWidget *parent)
   });
   connect(ui->sliderOpacity, &QSlider::valueChanged, this, [=]() {
     ui->lineEditOpacity->setText(QString::number(ui->sliderOpacity->value()));
+  });
+  connect(ui->sliderFontsize, &QSlider::valueChanged, this, [=]() {
+    ui->lineEdit_fs->setText(QString::number(ui->sliderFontsize->value()));
   });
   // connect(m_slider, &QSlider::valueChanged, this, &MyWidget::valueChanged);
   // 检测输出目录lineedit ，保证其值必须是一个正确的文件目录
