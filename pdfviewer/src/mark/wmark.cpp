@@ -297,7 +297,7 @@ int getpages(wstring filename, string flag) {
     int endpage =
         (int)m_oPDF.pcos_get_number(nSrcPDFID, L"length:pages");  //总页数
     auto fWidth =
-        (m_oPDF.pcos_get_number(nSrcPDFID, L"pages[0]/width"));  //宽度595
+        m_oPDF.pcos_get_number(nSrcPDFID, L"pages[0]/width");  //宽度595
     auto fHeight =
         m_oPDF.pcos_get_number(nSrcPDFID, L"pages[0]/height");  //高度842
 
@@ -324,7 +324,8 @@ int getpages(wstring filename, string flag) {
 
 int addWatermark(const QString& i, const QString& o, const QString& t,
                  const QString& p, const QString& c, const QString& r,
-                 const QString& f) {
+                 const QString& f, const QString& s, const QString& va,
+                 const QString& vs) {
   wstring infile = QString2WString(i);
   wstring outfile = QString2WString(o);
   wstring mark_txt = QString2WString(t);
@@ -333,9 +334,13 @@ int addWatermark(const QString& i, const QString& o, const QString& t,
   wstring mark_color = QString2WString(c);
   wstring mark_rotate = QString2WString(r);
   wstring mark_font = QString2WString(f);
-  // wstring mark1 = L"fontsize=10 fontname=" + mark_font + L" encoding=unicode
-  // fillcolor=" + mark_color + L" boxsize={95 42}  rotate=" + mark_rotate;
-  // wcout
+  wstring mark_scale = QString2WString(s);
+  wstring mark_vertalign = QString2WString(va);
+  wstring mark_vertshift = QString2WString(vs);
+
+  // wstring mark1 = L"fontsize=10 fontname=" + mark_font + L"
+  // encoding=unicode fillcolor=" + mark_color + L" boxsize={95 42} rotate="
+  // + mark_rotate; wcout
   // << mark_txt << endl; qDebug() << "mark_txt:" << mark_txt;//流输出方式
   // qDebug() << getpages(infile, "pages");
 
@@ -345,6 +350,7 @@ int addWatermark(const QString& i, const QString& o, const QString& t,
     PDFlib p;
     const wstring searchpath = L"./PDFlib-CMap-5.0/resource/cmap";
     wostringstream optlist;
+    wstring mark;
     optlist << L"searchpath={{" << searchpath << L"}";
     optlist << L" {" << GetFontsFolder() << L"}}";
     p.set_option(optlist.str());
@@ -354,7 +360,6 @@ int addWatermark(const QString& i, const QString& o, const QString& t,
     }
     p.set_info(L"Creator", L"泛生态业务工具集");
     p.set_info(L"Title", L"本文档来自于泛生态业务投标案例");
-
     indoc = p.open_pdi_document(infile, L"");
     // font = p.load_font(L"Helvetica", L"winansi", L"unicode");
     // 设置字体、字符集
@@ -379,18 +384,17 @@ int addWatermark(const QString& i, const QString& o, const QString& t,
 
     p.begin_template_ext(
         0, 0, L"watermark={location=ontop opacity=" + mark_opacity + L"}");
-
-    // p.fit_textline(L"继续与设计院、业主重点合作伙伴沟通，争取达成共赢合作模式",
-    // 0, 0,L"fontsize=10 fontname=STSong-Light encoding=unicode  fillcolor=red
-    // boxsize={595 842} rotate=15 stamp=ll2ur");
-    // p.fit_textline(L"“十四五”武都引水灌区现代化改造工程信息化(“智慧武引”二期)系统",
-    // 0, 0,L"fontsize=10 fontname=STSong-Light encoding=unicode  fillcolor=red
-    // boxsize={195 142}  rotate=-45 "); wstring mark = L"fontsize=10 fontname="
-    // + mark_font + L" encoding=unicode  fillcolor=" + mark_color + L"
-    // boxsize={95 42}  rotate=" + mark_rotate;
-    wstring mark = L"fontsize=10 fontname=" + mark_font +
-                   L" encoding=unicode  fillcolor=" + mark_color +
-                   L" boxsize={95 42}  rotate=" + mark_rotate;
+    /*
+    p.begin_template_ext(0, 0,
+                         L"watermark={location=ontop opacity=" + mark_opacity +
+                             L"  horizalign=right horizshift=-200 scale=" +
+                             mark_scale + L" vertalign=" + mark_vertalign +
+                             L" vertshift=" + mark_vertshift +
+                             L"}  topdown=true");
+*/
+    mark = L"fontsize=10 fontname=" + mark_font +
+           L" encoding=unicode  fillcolor=" + mark_color +
+           L" boxsize={95 42}  rotate=" + mark_rotate;
     // wcout<< mark<<endl;
     p.fit_textline(mark_txt, 100, 100, mark);
     p.end_template_ext(0, 0);
@@ -407,7 +411,6 @@ int addWatermark(const QString& i, const QString& o, const QString& t,
       p.end_page_ext(L"");
     }
     p.end_document(L"");
-
   }
 
   catch (PDFlib::Exception& ex) {
