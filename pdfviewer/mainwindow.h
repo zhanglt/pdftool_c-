@@ -7,6 +7,7 @@
 #include <QThreadPool>
 
 #include "function.h"
+#include "include/mark/multiWatermarkThreadSingle.h "
 #include "include/mark/watermarkThread.h"
 #include "include/mark/watermarkThreadSingle.h"
 #include "include/pdf2image/pdf2ImageThreadSingle.h"
@@ -33,6 +34,7 @@ class MainWindow : public QMainWindow {
   ZoomSelector *m_zoomSelector;
   watermarkThread *wmThread;
   watermarkThreadSingle *wmThreadSinge;
+  multiWatermarkThreadSingle *mwmThreadSinge;
   pdf2imageThreadSingle *pdf2imageThread;
   QThreadPool threadPool;
   int *COUNT;
@@ -42,7 +44,7 @@ class MainWindow : public QMainWindow {
   void viewWatermark();
   void addWatermarkSingle(QString text, QString inputDir, QString outputDir,
                           QString color, QString opacity, QString rotate,
-                          QString font);
+                          QString font, QString fontSize);
   void exportPdf(QDir dir);
   // void SlotSetCurrRow();
  private slots:

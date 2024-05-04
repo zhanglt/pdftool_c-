@@ -1,5 +1,9 @@
+#include <iostream>
+
+#include "qpainter.h"
 #pragma execution_character_set("utf-8")
-#include "mainwindow.h"
+
+#include <windows.h>
 
 #include <QDebug>
 #include <QFileDialog>
@@ -13,11 +17,13 @@
 #include <QTableWidget>
 #include <QtConcurrent/QtConcurrent>
 #include <QtMath>
+#include <QtSvg/QSvgGenerator>
 
 #include "QStandardItem"
 #include "function.h"
 #include "include/QProgressIndicator.h"
 #include "include/mark/mark.h"
+#include "mainwindow.h"
 #include "pageselector.h"
 #include "qColordialog.h"
 #include "ui_mainwindow.h"
@@ -99,13 +105,17 @@ MainWindow::MainWindow(QWidget *parent)
   threadPool.setMaxThreadCount(10);
 
   // 当lineEditWaterText文本变动且失去焦点时候出发viewWatermark()函数用来更新文档预览
-  connect(ui->lineEditWaterText, &CustomLineEdit::dataChanged, this,
+  connect(ui->lineEditWaterText, &CustomTextEdit::dataChanged, this,
           &MainWindow::viewWatermark);
   // 拖动滑块改变数值，后同步更新预览
   connect(ui->sliderOpacity, &QSlider::sliderReleased, this,
           &MainWindow::viewWatermark);
   connect(ui->sliderRotate, &QSlider::sliderReleased, this,
           &MainWindow::viewWatermark);
+
+  connect(ui->lineEdit_fs, &CustomLineEdit::dataChanged, this,
+          &MainWindow::viewWatermark);
+
   // 更新slider后同步更新
   // 数值显示框，这个功能可以合并到MainWindow::viewWatermark中？
   connect(ui->sliderRotate, &QSlider::valueChanged, this, [=]() {
@@ -257,7 +267,7 @@ void MainWindow::on_btnSelectOutput_clicked() {
 
 // 增加水印
 void MainWindow::on_btnAddWater_clicked() {
-  QString text = ui->lineEditWaterText->text();
+  QString text = ui->lineEditWaterText->toPlainText();
   if (text.isEmpty()) {
     QMessageBox::information(nullptr, "提示", "水印文本不能为空");
     return;
@@ -282,6 +292,7 @@ void MainWindow::on_btnAddWater_clicked() {
   QString opacity = ui->lineEditOpacity->text();
   QString rotate = ui->lineEditRotate->text();
   int fontIndex = ui->cBoxFont->currentIndex();
+  QString fontsize = ui->lineEdit_fs->text();
   QString font;
   switch (fontIndex) {
     case 0:
@@ -301,13 +312,34 @@ void MainWindow::on_btnAddWater_clicked() {
   }
   QElapsedTimer time;
   time.start();
+  // 多行水印文本处理
+  if (ui->lineEditWaterText->document()->blockCount() > 1) {
+    if (dir.isFile() && dir.suffix().toLower() == "pdf") {  //文件处理
+      // addWatermark(inputDir, outputDir + "/_out_/" + dir.fileName(), text,
+      //            opacity + "%", color, "-" + rotate, font);
 
-  if (dir.isFile() && dir.suffix().toLower() == "pdf") {
-    addWatermark(inputDir, outputDir + "/_out_/" + dir.fileName(), text,
-                 opacity + "%", color, rotate, font);
+      addWatermark_multiline(
+          inputDir.toStdString(), outputDir.toStdString() + "/_out_/", text,
+          font, fontsize.toInt(), color, rotate.toDouble(), opacity.toDouble());
+
+    } else {
+      //目录处理
+      addWatermarkSingle(text, inputDir, outputDir, color, opacity, rotate,
+                         ui->cBoxFont->currentText(), fontsize);
+    }
+
   } else {
-    addWatermarkSingle(text, inputDir, outputDir, color, opacity, rotate, font);
+    //单行水印文本处理
+    if (dir.isFile() && dir.suffix().toLower() == "pdf") {  //文件处理
+      addWatermark(inputDir, outputDir + "/_out_/" + dir.fileName(), text,
+                   opacity + "%", color, "-" + rotate, font);
+    } else {
+      //目录出路
+      addWatermarkSingle(text, inputDir, outputDir, color, opacity,
+                         "-" + rotate, font, fontsize);
+    }
   }
+
   // qDebug() << "总共用时:" << time.elapsed() << "毫秒";
   ui->textEditLog->append("增加水印用时:" + QString::number(time.elapsed()) +
                           "毫秒,结果文件保存在:" + ui->lineEditOutput->text() +
@@ -321,7 +353,7 @@ void MainWindow::on_btnAddWater_clicked() {
 void MainWindow::viewWatermark() {
   QElapsedTimer time;
   time.start();
-  QString text = ui->lineEditWaterText->text();
+  QString text = ui->lineEditWaterText->toPlainText();
   if (text.isEmpty()) {
     QMessageBox::information(nullptr, "提示", "水印文本不能为空");
     return;
@@ -368,7 +400,23 @@ void MainWindow::viewWatermark() {
       qDebug()<<"rotate"<<rotate;
       qDebug()<<"font"<<font;
   */
-  addWatermark("doc/1.pdf", "doc/2.pdf", text, opacity, color, rotate, font);
+
+  // 多行文本处理
+  if (ui->lineEditWaterText->document()->blockCount() > 1) {
+    addWatermark_multiline(
+        "doc/1.pdf", "doc/2.pdf", ui->lineEditWaterText->toPlainText(),
+        ui->cBoxFont->currentText(), ui->lineEdit_fs->text().toInt(),
+        ui->lineEditColor->text(), ui->lineEditRotate->text().toDouble(),
+        ui->lineEditOpacity->text().toDouble() / 100);
+    //由于多行文本用create_annotation处理，在预览中不显示，所以做转换处理
+    pdf2image("doc/2.pdf", "doc/", 72);
+    image2pdf("doc/0.png", "doc/2.pdf");
+  } else {
+    //单上文本处理
+    addWatermark("doc/1.pdf", "doc/2.pdf", text, opacity, color, "-" + rotate,
+                 font);
+  }
+
   this->open(QUrl::fromLocalFile("doc/2.pdf"));
   emit this->m_zoomSelector->zoomModeChanged(QPdfView::FitToWidth);
 }
@@ -379,7 +427,7 @@ void MainWindow::viewWatermark() {
 void MainWindow::addWatermarkSingle(QString text, QString inputDir,
                                     QString outputDir, QString color,
                                     QString opacity, QString rotate,
-                                    QString font) {
+                                    QString font, QString fontSize) {
   QDir dir(inputDir);
   QStringList files;
   traverseDirectory(dir, files, "pdf", "_out_");
@@ -389,29 +437,45 @@ void MainWindow::addWatermarkSingle(QString text, QString inputDir,
     QMessageBox::information(nullptr, "提示！", "输入目录中文件为空");
   } else {
     for (const auto &file : files) {
+      // qDebug() << "file:" << file;
       QString outfile =
           pathChange(inputDir, outputDir, file, "_out_").replace("//", "/");
-      wmThreadSinge = new watermarkThreadSingle(&m_mutex, &map);
-      /*
-      connect(wmThreadSinge, &watermarkThreadSingle::addFinish, this,
-              [=](wMap map) {
 
-                            QMap<QString, int>::const_iterator i;
-                            for (i = map.constBegin(); i != map.constEnd();
-                   ++i)
-                            {
-                                qDebug() << i.key() << ":" << i.value();
-                            }
-                // qDebug() << "-------:"<< map.size();
-              });*/
-      wmThreadSinge->setText(text);
-      wmThreadSinge->setFont(font);
-      wmThreadSinge->setColor(color);
-      wmThreadSinge->setRotate(rotate);
-      wmThreadSinge->setOpacity(opacity);
-      wmThreadSinge->setInputFilename(file);
-      wmThreadSinge->setOutputFilename(outfile);
-      threadPool.start(wmThreadSinge);
+      if (ui->lineEditWaterText->document()->blockCount() > 1) {
+        mwmThreadSinge = new multiWatermarkThreadSingle(&m_mutex, &map);
+        mwmThreadSinge->setText(text);
+        mwmThreadSinge->setFont(font);
+        mwmThreadSinge->setColor(color);
+        mwmThreadSinge->setRotate(rotate);
+        mwmThreadSinge->setOpacity(opacity);
+        mwmThreadSinge->setFontsize(fontSize);
+        mwmThreadSinge->setInputFilename(file);
+        mwmThreadSinge->setOutputFilename(outfile);
+        threadPool.start(mwmThreadSinge);
+      } else {
+        wmThreadSinge = new watermarkThreadSingle(&m_mutex, &map);
+        /*
+        connect(wmThreadSinge, &watermarkThreadSingle::addFinish, this,
+                [=](wMap map) {
+
+                              QMap<QString, int>::const_iterator i;
+                              for (i = map.constBegin(); i != map.constEnd();
+                     ++i)
+                              {
+                                  qDebug() << i.key() << ":" << i.value();
+                              }
+                  // qDebug() << "-------:"<< map.size();
+                });*/
+        wmThreadSinge->setText(text);
+        wmThreadSinge->setFont(font);
+        wmThreadSinge->setColor(color);
+        wmThreadSinge->setRotate(rotate);
+        wmThreadSinge->setOpacity(opacity);
+        wmThreadSinge->setFontsize(fontSize);
+        wmThreadSinge->setInputFilename(file);
+        wmThreadSinge->setOutputFilename(outfile);
+        threadPool.start(wmThreadSinge);
+      }
     }
 
     threadPool.waitForDone();
@@ -652,7 +716,6 @@ void MainWindow::on_btnSelectFilesplit_clicked() {
   QString fileName = QFileDialog::getOpenFileName(
       nullptr, "选择PDF文件", QDir::homePath(), "PDF文件 (*.pdf *.PDF)");
   if (!fileName.isEmpty()) {
-    qDebug() << "选择的目录：" << fileName;
     ui->lineEditInputFilesplit->setText(fileName);
   }
   if (fileName.length() > 0) {
@@ -730,34 +793,54 @@ void MainWindow::on_btnSplitPdf_clicked() {
   //通过radiobutton来选择两种拆分方式
   if (ui->radioButtonSpliterange->isChecked()) {
     //第一种拆分方式：从原始文件中提取区间页数为新文件
-    QString range = ui->lineEditSplitscope->text();
-    QStringList parts;
+    QString range, sub_range;
+    QStringList parts, sub_parts;
     int start = 0, end = 0;
+    range = ui->lineEditSplitscope->text();
     // 通过正则表达式来验证拆分规则的有效性
-    QRegularExpression regex("^\\d+-\\d+$");
-    if (regex.match(range).hasMatch()) {
-      parts = range.split("-");
-      start = parts[0].toInt() - 1;
-      end = parts[1].toInt();
+    QRegularExpression regex("^\\d+-\\d+(,\\d+-\\d+)*$");
+    QRegularExpressionMatch match = regex.match(range);
+    if (match.hasMatch()) {
+      if (regex.match(range).hasMatch()) {
+        parts = range.split(",");
+        for (int i = 0; i < parts.size(); ++i) {
+          sub_range = parts.at(i);
+          sub_parts = sub_range.split("-");
+          start = sub_parts[0].toInt() - 1;
+          end = sub_parts[1].toInt();
+          qDebug() << "start:" << start;
+          qDebug() << "end:" << end;
+          if (end > pages) {
+            QMessageBox::information(nullptr, "警告！",
+                                     "拆分范围不能大于文档总页数");
+            return;
+          }
+          if (start > end) {
+            QMessageBox::information(nullptr, "警告！",
+                                     "拆分范围开始值不能大于结束值");
+            return;
+          }
+        }
+      }
     } else {
       QMessageBox::information(nullptr, "警告！",
-                               "目前之支持一个n-n格式的拆分");
+                               "目前只支持n-n,n-n...格式的拆分");
       return;
     }
 
-    if (end > pages) {
-      QMessageBox::information(nullptr, "警告！", "拆分范围不能大于文档总页数");
-      return;
+    if (regex.match(range).hasMatch()) {
+      parts = range.split(",");
+      for (int i = 0; i < parts.size(); ++i) {
+        sub_range = parts.at(i);
+        sub_parts = sub_range.split("-");
+        start = sub_parts[0].toInt() - 1;
+        end = sub_parts[1].toInt();
+        string sub_out = out + "_" + sub_parts[0].toStdString() + "-" +
+                         sub_parts[1].toStdString();
+        splitPdf(in, sub_out, start, end);
+      }
     }
-    if (start > end) {
-      QMessageBox::information(nullptr, "警告！",
-                               "拆分范围开始值不能大于结束值");
-      return;
-    }
-    if (splitPdf(in, out, start, end) == 0) {
-      this->open(
-          QUrl::fromLocalFile(QString::fromStdString(out + "_split.pdf")));
-    }
+
     QMessageBox::information(
         nullptr, "PDF拆分完成！",
         "文件保存在保存：" + ui->lineEditSplitOutput->text());
