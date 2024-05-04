@@ -1,8 +1,8 @@
 RC_ICONS = serviceMonitor.ico
 TEMPLATE = app
 TARGET = pdfviewer
-QT += core gui widgets pdfwidgets printsupport
-CONFIG += static
+QT += core gui widgets pdfwidgets printsupport svg
+
 SOURCES += \
     function.cpp \
     lib/pdflib.cpp \
@@ -11,11 +11,13 @@ SOURCES += \
     pageselector.cpp \
     src/QProgressIndicator.cpp \
     src/lineedit/CustomLineEdit.cpp \
+    src/mark/multiWatermarkThreadSingle.cpp \
     src/mark/watermarkThread.cpp \
     src/mark/watermarkThreadSingle.cpp \
     src/mark/wmark.cpp \
     src/pdf2image/pdf2ImageThreadSingle.cpp \
     src/slider/CustomSlider.cpp \
+    src/textedit/CustomTextEdit.cpp \
     zoomselector.cpp
 
 HEADERS += \
@@ -23,10 +25,13 @@ HEADERS += \
     include/QProgressIndicator.h \
     include/lineedit/CustomLineEdit.h \
     include/mark/mark.h \
+    include/mark/multiWatermarkThreadSingle.h \
     include/mark/watermarkThread.h \
     include/mark/watermarkThreadSingle.h \
+    include/mytable.h \
     include/pdf2image/pdf2ImageThreadSingle.h \
     include/slider/CustomSlider.h \
+    include/textedit/CustomTextEdit.h \
     lib/cpp_wrapped.h \
     lib/pdflib.h \
     lib/pdflib.hpp \
@@ -99,3 +104,17 @@ else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/mu
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/mupdf/lib/debug/libthirdparty.lib
 
 
+
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/libxml2/lib/release/ -llibxml2
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/libxml2/lib/debug/ -llibxml2d
+
+INCLUDEPATH += $$PWD/libxml2/include/libxml2
+DEPENDPATH += $$PWD/libxml2/include/libxml2
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/iconv/lib/release/ -llibiconv
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/iconv/lib/debug/ -llibiconv
+
+INCLUDEPATH += $$PWD/iconv/include
+DEPENDPATH += $$PWD/iconv/include
