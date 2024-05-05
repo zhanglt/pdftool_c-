@@ -253,7 +253,7 @@ void traverseDirectory(const QDir& dir, QStringList& resultList,
     QString extension = fileInfo.suffix();  // 获取文件扩展名
     //  // 如果文件是 PDF 文件
     if ((extension.toLower() == fileType) &&
-        (!dir.filePath(file).contains("_out_")) &&
+        (!dir.filePath(file).contains(exclude)) &&
         (!dir.filePath(file).contains("_pdf_"))) {  // 如果文件是 PDF 文件
       resultList.append(dir.filePath(file));  // 将文件路径添加到结果列表中
     }

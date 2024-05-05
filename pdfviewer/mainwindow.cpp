@@ -320,7 +320,6 @@ void MainWindow::on_btnAddWater_clicked() {
     if (dir.isFile() && dir.suffix().toLower() == "pdf") {  //文件处理
       // addWatermark(inputDir, outputDir + "/_out_/" + dir.fileName(), text,
       //            opacity + "%", color, "-" + rotate, font);
-
       addWatermark_multiline(
           inputDir.toStdString(), outputDir.toStdString() + "/_out_/", text,
           font, fontsize.toInt(), color, rotate.toDouble(), opacity.toDouble());
@@ -520,7 +519,7 @@ void MainWindow::on_btnExportPDF_clicked() {
 void MainWindow::exportPdf(QDir pdfdir) {
   ui->btnAddWater->setEnabled(false);
   QStringList files;
-  traverseDirectory(pdfdir, files, "pdf", "");
+  traverseDirectory(pdfdir, files, "pdf", "_pdf_");
   if (files.length() < 1) {
     QMessageBox::information(
         nullptr, "系统提示！",
